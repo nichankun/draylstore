@@ -2,100 +2,148 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { User, Diamond, CreditCard, Check, Zap } from "lucide-react";
+import { User, Diamond, CreditCard, Check, Zap, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { NOMINAL_OPTIONS, PAYMENT_METHODS, Nominal } from "@/lib/constants";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { cn } from "@/lib/utils";
+import { PAYMENT_METHODS } from "@/lib/constants";
+import { createOrder } from "@/app/actions/order";
+import { useFormStatus } from "react-dom";
 
-export function OrderForm() {
-  const [selectedNominal, setSelectedNominal] = useState<Nominal>(
-    NOMINAL_OPTIONS[0],
+// 1. Definisikan tipe nominal agar sinkron dengan database
+interface Nominal {
+  id: number;
+  label: string;
+  price: string;
+}
+
+interface OrderFormProps {
+  nominals: Nominal[]; // Data ini akan dikirim dari page.tsx (Server Component)
+  gameSlug: string;
+}
+
+export function OrderForm({ nominals, gameSlug }: OrderFormProps) {
+  // Gunakan nominal pertama sebagai default jika data tersedia
+  const [selectedNominal, setSelectedNominal] = useState<Nominal | null>(
+    nominals.length > 0 ? nominals[0] : null,
   );
   const [selectedPayment, setSelectedPayment] = useState(PAYMENT_METHODS[0].id);
 
   return (
     <section id="order" className="max-w-7xl mx-auto px-4 pb-24">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-        {/* Form Inputs */}
+      <form
+        action={createOrder}
+        className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start"
+      >
+        {/* Input Tersembunyi: Sangat penting untuk mengirim data state ke Server Action */}
+        <input
+          type="hidden"
+          name="nominalId"
+          value={selectedNominal?.id || ""}
+        />
+        <input
+          type="hidden"
+          name="amount"
+          value={selectedNominal?.price || ""}
+        />
+        <input type="hidden" name="paymentMethod" value={selectedPayment} />
+        <input type="hidden" name="gameSlug" value={gameSlug} />
+
         <div className="lg:col-span-2 space-y-6">
           {/* Step 1: User ID */}
-          <div className="bg-[#161e31] p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-[#2a3b56]">
+          <Card className="p-6 sm:p-8 rounded-[2rem] border-border bg-card/50 backdrop-blur-sm">
             <div className="flex items-center gap-4 mb-6">
-              <div className="size-8 sm:size-10 bg-[#22d3ee] text-[#0b1120] rounded-xl flex items-center justify-center font-black text-lg sm:text-xl">
+              <Badge className="size-10 rounded-xl flex items-center justify-center font-black text-xl">
                 1
-              </div>
-              <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
-                User ID
+              </Badge>
+              <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
+                Data Akun
               </h2>
-              <User className="ml-auto text-[#22d3ee]/50" />
+              <User className="ml-auto text-primary/40" />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <input
-                type="text"
-                placeholder="User ID"
-                className="w-full bg-[#0b1120]/50 border-2 border-[#2a3b56] rounded-xl py-3 px-4 focus:border-[#22d3ee] outline-none text-white transition-all font-bold"
+              <Input
+                name="userId"
+                required
+                placeholder="Masukkan User ID"
+                className="h-12 bg-background/50 border-2 border-border focus:border-primary font-bold"
               />
-              <input
-                type="text"
-                placeholder="Zone ID"
-                className="w-full bg-[#0b1120]/50 border-2 border-[#2a3b56] rounded-xl py-3 px-4 focus:border-[#22d3ee] outline-none text-white transition-all font-bold"
+              <Input
+                name="zoneId"
+                placeholder="Zone ID / Server"
+                className="h-12 bg-background/50 border-2 border-border focus:border-primary font-bold"
               />
             </div>
-          </div>
+          </Card>
 
-          {/* Step 2: Nominal */}
-          <div className="bg-[#161e31] p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-[#2a3b56]">
+          {/* Step 2: Nominal - Dinamis dari Database */}
+          <Card className="p-6 sm:p-8 rounded-[2rem] border-border bg-card/50">
             <div className="flex items-center gap-4 mb-6">
-              <div className="size-8 sm:size-10 bg-[#22d3ee] text-[#0b1120] rounded-xl flex items-center justify-center font-black text-lg sm:text-xl">
+              <Badge className="size-10 rounded-xl flex items-center justify-center font-black text-xl">
                 2
-              </div>
-              <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
-                Nominal
+              </Badge>
+              <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
+                Pilih Item
               </h2>
-              <Diamond className="ml-auto text-[#22d3ee]/50" />
+              <Diamond className="ml-auto text-primary/40" />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
-              {NOMINAL_OPTIONS.map((item) => (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              {nominals.map((item) => (
                 <button
                   key={item.id}
+                  type="button"
                   onClick={() => setSelectedNominal(item)}
-                  className={`p-4 rounded-xl border-2 text-left transition-all relative overflow-hidden ${selectedNominal.id === item.id ? "bg-[#22d3ee]/10 border-[#22d3ee]" : "bg-[#0b1120]/30 border-[#2a3b56] hover:border-[#22d3ee]/50"}`}
+                  className={cn(
+                    "p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group",
+                    selectedNominal?.id === item.id
+                      ? "bg-primary/10 border-primary"
+                      : "bg-background/40 border-border hover:border-primary/50",
+                  )}
                 >
-                  <span className="block font-black text-white text-sm sm:text-base mb-1">
+                  <span className="block font-black text-foreground text-sm mb-1">
                     {item.label}
                   </span>
-                  <span className="text-xs text-[#22d3ee] font-bold">
+                  <span className="text-xs text-primary font-bold">
                     Rp {item.price}
                   </span>
-                  {selectedNominal.id === item.id && (
+                  {selectedNominal?.id === item.id && (
                     <Check
-                      className="absolute top-2 right-2 text-[#22d3ee]"
+                      className="absolute top-2 right-2 text-primary"
                       size={14}
                     />
                   )}
                 </button>
               ))}
             </div>
-          </div>
+          </Card>
 
           {/* Step 3: Pembayaran */}
-          <div className="bg-[#161e31] p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border border-[#2a3b56]">
+          <Card className="p-6 sm:p-8 rounded-[2rem] border-border bg-card/50">
             <div className="flex items-center gap-4 mb-6">
-              <div className="size-8 sm:size-10 bg-[#22d3ee] text-[#0b1120] rounded-xl flex items-center justify-center font-black text-lg sm:text-xl">
+              <Badge className="size-10 rounded-xl flex items-center justify-center font-black text-xl">
                 3
-              </div>
-              <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight">
-                Pembayaran
+              </Badge>
+              <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
+                Metode Pembayaran
               </h2>
-              <CreditCard className="ml-auto text-[#22d3ee]/50" />
+              <CreditCard className="ml-auto text-primary/40" />
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               {PAYMENT_METHODS.map((pay) => (
                 <button
                   key={pay.id}
+                  type="button"
                   onClick={() => setSelectedPayment(pay.id)}
-                  className={`bg-white p-3 sm:p-4 rounded-xl border-2 h-14 sm:h-16 flex items-center justify-center relative transition-all ${selectedPayment === pay.id ? "border-[#22d3ee] shadow-lg shadow-[#22d3ee]/20" : "opacity-50 border-transparent hover:opacity-100"}`}
+                  className={cn(
+                    "bg-white p-4 rounded-2xl border-2 h-16 flex items-center justify-center relative transition-all",
+                    selectedPayment === pay.id
+                      ? "border-primary shadow-lg shadow-primary/20 scale-105"
+                      : "opacity-40 grayscale hover:grayscale-0 hover:opacity-100",
+                  )}
                 >
-                  <div className="relative h-6 w-16 sm:w-20">
+                  <div className="relative h-6 w-20">
                     <Image
                       src={pay.logo}
                       alt={pay.id}
@@ -106,41 +154,67 @@ export function OrderForm() {
                 </button>
               ))}
             </div>
-          </div>
+          </Card>
         </div>
 
         {/* Sidebar Ringkasan */}
         <aside className="lg:sticky lg:top-28">
-          <div className="bg-[#161e31] p-6 sm:p-8 rounded-2xl sm:rounded-[32px] border-t-4 border-t-[#22d3ee] border-x border-b border-[#2a3b56] shadow-2xl">
-            <h2 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight mb-6 pb-4 border-b border-[#2a3b56]">
+          <Card className="p-6 sm:p-8 rounded-[2rem] border-t-4 border-t-primary border-border bg-card shadow-2xl">
+            <h2 className="text-xl font-black text-foreground uppercase tracking-tight mb-6 pb-4 border-b border-border">
               Ringkasan
             </h2>
             <div className="space-y-4 mb-8 text-xs font-bold uppercase tracking-widest">
               <div className="flex justify-between">
-                <span className="text-slate-400">Game</span>
-                <span className="text-white">MLBB</span>
+                <span className="text-muted-foreground">Layanan</span>
+                <span className="text-foreground">
+                  {gameSlug.toUpperCase()}
+                </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Item</span>
-                <span className="text-white">{selectedNominal.label}</span>
+                <span className="text-muted-foreground">Item</span>
+                <span className="text-foreground">
+                  {selectedNominal?.label || "-"}
+                </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-slate-400">Metode</span>
-                <span className="text-white">{selectedPayment}</span>
-              </div>
-              <div className="pt-4 sm:pt-6 border-t border-[#2a3b56] flex justify-between items-center text-sm sm:text-base">
-                <span className="text-white">Total</span>
-                <span className="text-xl sm:text-2xl font-black text-[#22d3ee] tracking-tighter">
-                  Rp {selectedNominal.price}
+              <div className="pt-6 border-t border-border flex justify-between items-center">
+                <span className="text-foreground text-sm">Total</span>
+                <span className="text-2xl font-black text-primary tracking-tighter">
+                  Rp {selectedNominal?.price || "0"}
                 </span>
               </div>
             </div>
-            <Button className="w-full bg-linear-to-r from-[#22d3ee] to-[#818cf8] py-6 sm:py-8 rounded-xl text-[#0b1120] font-black text-base sm:text-lg shadow-xl hover:scale-[1.02] transition-transform border-none">
-              <Zap size={20} className="mr-2 fill-current" /> BAYAR SEKARANG
-            </Button>
-          </div>
+
+            <SubmitButton />
+          </Card>
         </aside>
-      </div>
+      </form>
     </section>
+  );
+}
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <Button
+      disabled={pending}
+      className={cn(
+        "w-full py-8 rounded-2xl text-primary-foreground font-black text-lg shadow-xl transition-all",
+        // Menggunakan sintaks Tailwind CSS 4 gradient yang stabil
+        "bg-linear-to-r from-primary to-blue-600 hover:scale-[1.02] active:scale-95",
+      )}
+    >
+      {pending ? (
+        <>
+          <Loader2 className="mr-2 animate-spin" />
+          MEMPROSES...
+        </>
+      ) : (
+        <>
+          <Zap size={20} className="mr-2 fill-current" />
+          BAYAR SEKARANG
+        </>
+      )}
+    </Button>
   );
 }
