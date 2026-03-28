@@ -1,10 +1,10 @@
-import "dotenv/config";
-import { drizzle } from "drizzle-orm/node-postgres";
-import * as schema from "./database/schema"; // Impor semua tabel dan relasi
+// src/db.ts
+import { drizzle } from "drizzle-orm/neon-http";
+import { neon } from "@neondatabase/serverless";
+import { config } from "dotenv";
+import * as schema from "@/db/database/schema";
 
-/**
- * Inisialisasi Database
- * Menambahkan objek schema di sini sangat krusial agar TypeScript
- * mengenali properti .query dan relasi antar tabel.
- */
-export const db = drizzle(process.env.DATABASE_URL!, { schema });
+config({ path: ".env" }); // or .env.local
+
+const sql = neon(process.env.DATABASE_URL!);
+export const db = drizzle({ client: sql, schema });
