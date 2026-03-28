@@ -2,17 +2,35 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { User, Diamond, CreditCard, Check, Zap, Loader2 } from "lucide-react";
+import {
+  User,
+  Diamond,
+  CreditCard,
+  Check,
+  Zap,
+  Loader2,
+  ShoppingCart,
+  LucideIcon,
+  AlertCircle,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { PAYMENT_METHODS } from "@/lib/constants";
+import { PAYMENT_METHODS, PaymentMethod } from "@/lib/constants";
 import { createOrder } from "@/app/actions/order";
 import { useFormStatus } from "react-dom";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
-// 1. Definisikan tipe nominal agar sinkron dengan database
+// --- Interfaces ---
 interface Nominal {
   id: number;
   label: string;
@@ -20,175 +38,267 @@ interface Nominal {
 }
 
 interface OrderFormProps {
-  nominals: Nominal[]; // Data ini akan dikirim dari page.tsx (Server Component)
+  nominals: Nominal[];
   gameSlug: string;
 }
 
+interface FormSectionProps {
+  step: number;
+  title: string;
+  icon: React.ReactElement<LucideIcon>;
+  children: React.ReactNode;
+}
+
 export function OrderForm({ nominals, gameSlug }: OrderFormProps) {
-  // Gunakan nominal pertama sebagai default jika data tersedia
+  // State untuk Data Pilihan
   const [selectedNominal, setSelectedNominal] = useState<Nominal | null>(
     nominals.length > 0 ? nominals[0] : null,
   );
-  const [selectedPayment, setSelectedPayment] = useState(PAYMENT_METHODS[0].id);
+  const [selectedPayment, setSelectedPayment] = useState<string>(
+    PAYMENT_METHODS[0].id,
+  );
+
+  // State untuk Input (Digunakan untuk Konfirmasi di Modal)
+  const [userId, setUserId] = useState("");
+  const [zoneId, setZoneId] = useState("");
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+
+  // Ambil data pembayaran yang aktif untuk ringkasan
+  const activePayment = PAYMENT_METHODS.find((p) => p.id === selectedPayment);
 
   return (
-    <section id="order" className="max-w-7xl mx-auto px-4 pb-24">
+    <section id="order" className="max-w-7xl mx-auto px-4 pb-24 py-10">
       <form
         action={createOrder}
-        className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start"
+        className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start"
       >
-        {/* Input Tersembunyi: Sangat penting untuk mengirim data state ke Server Action */}
+        {/* Hidden Inputs untuk Server Action */}
         <input
           type="hidden"
           name="nominalId"
-          value={selectedNominal?.id || ""}
+          value={selectedNominal?.id ?? ""}
         />
         <input
           type="hidden"
           name="amount"
-          value={selectedNominal?.price || ""}
+          value={selectedNominal?.price ?? ""}
         />
         <input type="hidden" name="paymentMethod" value={selectedPayment} />
         <input type="hidden" name="gameSlug" value={gameSlug} />
 
         <div className="lg:col-span-2 space-y-6">
           {/* Step 1: User ID */}
-          <Card className="p-6 sm:p-8 rounded-[2rem] border-border bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center gap-4 mb-6">
-              <Badge className="size-10 rounded-xl flex items-center justify-center font-black text-xl">
-                1
-              </Badge>
-              <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
-                Data Akun
-              </h2>
-              <User className="ml-auto text-primary/40" />
-            </div>
+          <FormSection step={1} title="Data Akun" icon={<User size={20} />}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Input
                 name="userId"
-                required
                 placeholder="Masukkan User ID"
-                className="h-12 bg-background/50 border-2 border-border focus:border-primary font-bold"
+                required
+                className="h-12"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
               />
               <Input
                 name="zoneId"
                 placeholder="Zone ID / Server"
-                className="h-12 bg-background/50 border-2 border-border focus:border-primary font-bold"
+                className="h-12"
+                value={zoneId}
+                onChange={(e) => setZoneId(e.target.value)}
               />
             </div>
-          </Card>
+          </FormSection>
 
-          {/* Step 2: Nominal - Dinamis dari Database */}
-          <Card className="p-6 sm:p-8 rounded-[2rem] border-border bg-card/50">
-            <div className="flex items-center gap-4 mb-6">
-              <Badge className="size-10 rounded-xl flex items-center justify-center font-black text-xl">
-                2
-              </Badge>
-              <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
-                Pilih Item
-              </h2>
-              <Diamond className="ml-auto text-primary/40" />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+          {/* Step 2: Nominal */}
+          <FormSection step={2} title="Pilih Item" icon={<Diamond size={20} />}>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
               {nominals.map((item) => (
                 <button
                   key={item.id}
                   type="button"
                   onClick={() => setSelectedNominal(item)}
                   className={cn(
-                    "p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden group",
+                    "p-4 rounded-xl border-2 text-left transition-all relative flex flex-col group",
                     selectedNominal?.id === item.id
-                      ? "bg-primary/10 border-primary"
-                      : "bg-background/40 border-border hover:border-primary/50",
+                      ? "border-primary bg-primary/5"
+                      : "border-border bg-card hover:border-primary/50",
                   )}
                 >
-                  <span className="block font-black text-foreground text-sm mb-1">
-                    {item.label}
-                  </span>
-                  <span className="text-xs text-primary font-bold">
+                  <span className="font-bold text-sm">{item.label}</span>
+                  <span className="text-xs text-muted-foreground">
                     Rp {item.price}
                   </span>
                   {selectedNominal?.id === item.id && (
                     <Check
                       className="absolute top-2 right-2 text-primary"
-                      size={14}
+                      size={16}
                     />
                   )}
                 </button>
               ))}
             </div>
-          </Card>
+          </FormSection>
 
-          {/* Step 3: Pembayaran */}
-          <Card className="p-6 sm:p-8 rounded-[2rem] border-border bg-card/50">
-            <div className="flex items-center gap-4 mb-6">
-              <Badge className="size-10 rounded-xl flex items-center justify-center font-black text-xl">
-                3
-              </Badge>
-              <h2 className="text-xl font-black text-foreground uppercase tracking-tight">
-                Metode Pembayaran
-              </h2>
-              <CreditCard className="ml-auto text-primary/40" />
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              {PAYMENT_METHODS.map((pay) => (
+          {/* Step 3: Payment */}
+          <FormSection
+            step={3}
+            title="Metode Pembayaran"
+            icon={<CreditCard size={20} />}
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {PAYMENT_METHODS.map((pay: PaymentMethod) => (
                 <button
                   key={pay.id}
                   type="button"
                   onClick={() => setSelectedPayment(pay.id)}
                   className={cn(
-                    "bg-white p-4 rounded-2xl border-2 h-16 flex items-center justify-center relative transition-all",
+                    "p-3 rounded-xl border-2 h-16 flex items-center justify-center transition-all bg-white",
                     selectedPayment === pay.id
-                      ? "border-primary shadow-lg shadow-primary/20 scale-105"
-                      : "opacity-40 grayscale hover:grayscale-0 hover:opacity-100",
+                      ? "border-primary ring-1 ring-primary shadow-sm"
+                      : "border-border opacity-60 hover:opacity-100",
                   )}
                 >
-                  <div className="relative h-6 w-20">
+                  <div className="relative h-8 w-full">
                     <Image
                       src={pay.logo}
-                      alt={pay.id}
+                      alt={pay.name}
                       fill
+                      sizes="120px"
                       className="object-contain"
                     />
                   </div>
                 </button>
               ))}
             </div>
-          </Card>
+          </FormSection>
         </div>
 
-        {/* Sidebar Ringkasan */}
-        <aside className="lg:sticky lg:top-28">
-          <Card className="p-6 sm:p-8 rounded-[2rem] border-t-4 border-t-primary border-border bg-card shadow-2xl">
-            <h2 className="text-xl font-black text-foreground uppercase tracking-tight mb-6 pb-4 border-b border-border">
-              Ringkasan
-            </h2>
-            <div className="space-y-4 mb-8 text-xs font-bold uppercase tracking-widest">
-              <div className="flex justify-between">
+        {/* Sidebar Ringkasan & Submit */}
+        <aside className="lg:sticky lg:top-24">
+          <Card className="p-6 rounded-2xl shadow-sm border-2">
+            <div className="flex items-center gap-2 mb-6 font-bold uppercase text-sm tracking-wider border-b pb-4">
+              <ShoppingCart size={18} />
+              Ringkasan Pesanan
+            </div>
+
+            <div className="space-y-4 mb-6">
+              <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Layanan</span>
-                <span className="text-foreground">
-                  {gameSlug.toUpperCase()}
+                <span className="font-medium uppercase">
+                  {gameSlug.replace("-", " ")}
                 </span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Item</span>
-                <span className="text-foreground">
-                  {selectedNominal?.label || "-"}
+                <span className="font-medium">
+                  {selectedNominal?.label ?? "-"}
                 </span>
               </div>
-              <div className="pt-6 border-t border-border flex justify-between items-center">
-                <span className="text-foreground text-sm">Total</span>
-                <span className="text-2xl font-black text-primary tracking-tighter">
-                  Rp {selectedNominal?.price || "0"}
+              <div className="pt-4 border-t flex justify-between items-center">
+                <span className="text-sm font-bold">Total</span>
+                <span className="text-xl font-bold text-primary">
+                  Rp {selectedNominal?.price ?? "0"}
                 </span>
               </div>
             </div>
 
-            <SubmitButton />
+            {/* Dialog Konfirmasi Pembayaran */}
+            <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  disabled={!userId || !selectedNominal}
+                  className="w-full h-14 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-transform"
+                >
+                  <Zap size={20} fill="currentColor" className="mr-2" />
+                  BAYAR SEKARANG
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-106.25 rounded-2xl">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-bold">
+                    Konfirmasi Pesanan
+                  </DialogTitle>
+                  <DialogDescription>
+                    Periksa kembali data akun Anda agar tidak terjadi kesalahan
+                    top up.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4 py-4">
+                  <div className="bg-muted/50 p-5 rounded-2xl space-y-3 border">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">User ID</span>
+                      <span className="font-bold text-primary">
+                        {userId} {zoneId ? `(${zoneId})` : ""}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Layanan</span>
+                      <span className="font-bold uppercase">{gameSlug}</span>
+                    </div>
+                    <div className="flex justify-between text-sm border-t pt-3">
+                      <span className="text-muted-foreground">Item</span>
+                      <span className="font-bold">
+                        {selectedNominal?.label}
+                      </span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Metode</span>
+                      <span className="font-bold uppercase">
+                        {activePayment?.name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-3 border-t">
+                      <span className="text-sm font-bold">Harga</span>
+                      <span className="text-lg font-black text-primary">
+                        Rp {selectedNominal?.price}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 p-3 bg-amber-50 text-amber-700 rounded-xl border border-amber-200 text-xs leading-relaxed">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <p>
+                      Pastikan User ID sudah benar. Kesalahan pengiriman akibat
+                      kelalaian input adalah tanggung jawab pembeli.
+                    </p>
+                  </div>
+                </div>
+
+                <DialogFooter className="flex flex-col sm:flex-col gap-2">
+                  <SubmitButton />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full rounded-xl"
+                    onClick={() => setIsConfirmOpen(false)}
+                  >
+                    Kembali ke Form
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </Card>
         </aside>
       </form>
     </section>
+  );
+}
+
+// --- Sub-Components ---
+
+function FormSection({ step, title, icon, children }: FormSectionProps) {
+  return (
+    <Card className="p-6 rounded-2xl border-2 shadow-sm bg-card/50">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold">
+          {step}
+        </div>
+        <h2 className="font-bold text-lg uppercase tracking-tight">{title}</h2>
+        <div className="ml-auto text-muted-foreground">{icon}</div>
+      </div>
+      {children}
+    </Card>
   );
 }
 
@@ -198,22 +308,15 @@ function SubmitButton() {
   return (
     <Button
       disabled={pending}
-      className={cn(
-        "w-full py-8 rounded-2xl text-primary-foreground font-black text-lg shadow-xl transition-all",
-        // Menggunakan sintaks Tailwind CSS 4 gradient yang stabil
-        "bg-linear-to-r from-primary to-blue-600 hover:scale-[1.02] active:scale-95",
-      )}
+      type="submit"
+      className="w-full h-14 rounded-xl font-bold text-lg shadow-md"
     >
       {pending ? (
-        <>
-          <Loader2 className="mr-2 animate-spin" />
-          MEMPROSES...
-        </>
+        <div className="flex items-center gap-2">
+          <Loader2 className="animate-spin" size={20} /> MEMPROSES...
+        </div>
       ) : (
-        <>
-          <Zap size={20} className="mr-2 fill-current" />
-          BAYAR SEKARANG
-        </>
+        "KONFIRMASI & BAYAR"
       )}
     </Button>
   );

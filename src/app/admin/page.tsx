@@ -1,61 +1,74 @@
+// src/app/admin/page.tsx
 import { db } from "@/db";
 import { transactions, nominals } from "@/db/database/schema";
 import { desc } from "drizzle-orm";
 import { DashboardStats } from "@/components/admin/dashboardstats";
 import { TransactionTable } from "@/components/admin/transactiontable";
 
-// Wajib: Matikan caching agar dashboard selalu menampilkan data terbaru setiap di-refresh
+/**
+ * Admin Dashboard - Clean Code Version
+ * 1. Menjalankan query secara paralel untuk kecepatan akses.
+ * 2. Mengoptimalkan perhitungan statistik dengan satu kali loop (O(n)).
+ * 3. Mengikuti standar Server Components Next.js 15+.
+ */
+
 export const dynamic = "force-dynamic";
 
 export default async function AdminDashboardPage() {
-  // 1. Tarik semua data transaksi dari database, urutkan dari yang terbaru
-  const realTransactions = await db.query.transactions.findMany({
-    orderBy: [desc(transactions.createdAt)],
-    with: { game: true, nominal: true },
-  });
+  // 1. Parallel Fetching: Menjalankan kedua query secara bersamaan untuk mengurangi waktu loading (Waterfall minimization)
+  const [realTransactions, nominalList] = await Promise.all([
+    db.query.transactions.findMany({
+      orderBy: [desc(transactions.createdAt)],
+      with: { game: true, nominal: true },
+    }),
+    db.select().from(nominals),
+  ]);
 
-  // 2. Tarik data nominal untuk menghitung total produk yang tersedia di toko Anda
-  const nominalList = await db.select().from(nominals);
+  // 2. Optimized Statistics Logic: Menghitung semua data dalam satu kali jalan (Reduce)
+  // Ini jauh lebih efisien daripada melakukan .filter() berkali-kali
+  const stats = realTransactions.reduce(
+    (acc, trx) => {
+      const amount = Number(trx.amount || 0);
+      const status = trx.status;
 
-  // 3. --- LOGIKA KALKULASI STATISTIK ---
-  const successCount = realTransactions.filter(
-    (t) => t.status === "sukses",
-  ).length;
-  const pendingCount = realTransactions.filter(
-    (t) => t.status === "pending",
-  ).length;
-  const failedCount = realTransactions.filter(
-    (t) => t.status === "gagal",
-  ).length;
+      if (status === "sukses") {
+        acc.successCount++;
+        acc.grossRevenue += amount;
+      } else if (status === "pending") {
+        acc.pendingCount++;
+      } else if (status === "gagal") {
+        acc.failedCount++;
+      }
 
-  // Hitung Pendapatan Kotor (Hanya jumlahkan transaksi yang SUKSES)
-  const grossRevenue = realTransactions
-    .filter((t) => t.status === "sukses")
-    .reduce((total, trx) => total + Number(trx.amount || 0), 0);
+      return acc;
+    },
+    { successCount: 0, pendingCount: 0, failedCount: 0, grossRevenue: 0 },
+  );
 
-  // Estimasi Laba Bersih (Misalnya kita asumsikan rata-rata margin keuntungan adalah 15%)
-  const netProfit = grossRevenue * 0.15;
+  // Perhitungan Laba (Margin 15%)
+  const netProfit = stats.grossRevenue * 0.15;
 
   return (
-    <div className="flex-1 overflow-y-auto">
-      {/* 4. Kirim hasil kalkulasi ke komponen DashboardStats */}
+    <div className="flex-1 overflow-y-auto bg-background/50">
+      {/* Dashboard Stats Section */}
       <DashboardStats
-        apiBalance={850500} // TODO: Nanti bisa dihubungkan ke saldo API Digiflazz/Provider
-        grossRevenue={grossRevenue}
+        apiBalance={850500} // TODO: Hubungkan ke Provider API (Digiflazz/Tripay)
+        grossRevenue={stats.grossRevenue}
         netProfit={netProfit}
         totalTransactions={realTransactions.length}
-        successCount={successCount}
-        pendingCount={pendingCount}
-        failedCount={failedCount}
+        successCount={stats.successCount}
+        pendingCount={stats.pendingCount}
+        failedCount={stats.failedCount}
         totalProducts={nominalList.length}
       />
 
-      {/* 5. Kirim data transaksi asli ke komponen TransactionTable */}
-      <div className="p-6 pt-0">
+      {/* Main Content: Table */}
+      <main className="p-6 pt-0">
         <div className="max-w-7xl mx-auto">
+          {/* Mengirimkan data transaksi ke tabel admin */}
           <TransactionTable transactions={realTransactions} />
         </div>
-      </div>
+      </main>
     </div>
   );
 }

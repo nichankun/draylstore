@@ -1,13 +1,22 @@
-// src/components/admin/transactiontable.tsx
 "use client";
 
-import { MoreVertical, Search, Filter } from "lucide-react";
+import { useState } from "react";
+import {
+  MoreVertical,
+  Search,
+  Filter,
+  Calendar,
+  CreditCard,
+  ChevronRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { InferSelectModel } from "drizzle-orm";
 import { transactions, games, nominals } from "@/db/database/schema";
 
+// --- Types ---
 type TransactionWithRelations = InferSelectModel<typeof transactions> & {
   game: InferSelectModel<typeof games> | null;
   nominal: InferSelectModel<typeof nominals> | null;
@@ -17,200 +26,233 @@ interface TransactionTableProps {
   transactions?: TransactionWithRelations[];
 }
 
+// --- Constants for Status Mapping ---
+const STATUS_CONFIG = {
+  pending: {
+    label: "Pending",
+    variant: "outline" as const,
+    color: "text-amber-500 bg-amber-500/10 border-amber-500/20",
+  },
+  sukses: {
+    label: "Success",
+    variant: "default" as const,
+    color: "text-emerald-500 bg-emerald-500/10 border-emerald-500/20",
+  },
+  gagal: {
+    label: "Failed",
+    variant: "destructive" as const,
+    color: "text-destructive bg-destructive/10 border-destructive/20",
+  },
+};
+
 export function TransactionTable({ transactions = [] }: TransactionTableProps) {
+  const [searchTerm, setSearchTerm] = useState("");
+
   return (
-    <div className="bg-card rounded-2xl border border-border shadow-lg overflow-hidden flex flex-col">
-      {/* Table Header Controls */}
-      <div className="p-5 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h2 className="text-lg font-bold text-foreground">
-          Transaksi Real-time
-        </h2>
-        <div className="flex items-center gap-2">
+    <div className="bg-card rounded-2xl border-2 border-border shadow-sm overflow-hidden flex flex-col">
+      {/* Header & Controls */}
+      <div className="p-6 border-b border-border flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-foreground">
+            Aktivitas Transaksi
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Monitoring seluruh pesanan masuk secara real-time.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-3">
           <div className="relative w-full sm:w-64">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Cari ID Pesanan..."
-              className="pl-9 bg-background border-border focus-visible:ring-primary"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 h-10 rounded-xl bg-background border-border focus-visible:ring-primary/20"
             />
           </div>
-          <Button variant="secondary" size="sm" className="gap-2">
-            <Filter className="h-4 w-4" />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-10 rounded-xl gap-2 font-bold px-4"
+          >
+            <Filter size={14} />
             Filter
           </Button>
         </div>
       </div>
 
-      {/* Table Body */}
+      {/* Table Content */}
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm whitespace-nowrap">
-          <thead className="bg-muted/50 text-muted-foreground border-b border-border uppercase text-[10px] font-bold tracking-wider">
-            <tr>
+          <thead className="bg-muted/30 text-muted-foreground border-b border-border">
+            <tr className="text-[10px] uppercase font-black tracking-widest">
               <th className="px-6 py-4">ID / Waktu</th>
-              <th className="px-6 py-4">Tujuan (ID Game)</th>
-              <th className="px-6 py-4">Item & Harga</th>
-              <th className="px-6 py-4">Status Pembayaran</th>
-              <th className="px-6 py-4">Status API</th>
+              <th className="px-6 py-4">Informasi Akun</th>
+              <th className="px-6 py-4">Produk & Nominal</th>
+              <th className="px-6 py-4">Pembayaran</th>
+              <th className="px-6 py-4">Status</th>
               <th className="px-6 py-4 text-right">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {transactions.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={6}
-                  className="px-6 py-8 text-center text-muted-foreground"
-                >
-                  Belum ada transaksi saat ini.
-                </td>
-              </tr>
+              <EmptyState />
             ) : (
-              transactions.map((trx) => {
-                // PERBAIKAN: Gunakan nilai cadangan "pending" jika trx.status bernilai null
-                const safeStatus = trx.status || "pending";
-                // Gunakan nilai cadangan "-" jika paymentMethod bernilai null
-                const safePaymentMethod = trx.paymentMethod || "-";
-
-                // Tentukan logika warna status berdasarkan variabel yang sudah aman
-                const isPending = safeStatus === "pending";
-                const isSuccess = safeStatus === "sukses";
-                const isFailed = safeStatus === "gagal";
-
-                return (
-                  <tr
-                    key={trx.id}
-                    className={cn(
-                      "hover:bg-muted/30 transition-colors",
-                      isFailed && "bg-destructive/5",
-                    )}
-                  >
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-foreground">
-                        TRX-{trx.id.toString().padStart(4, "0")}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        {trx.createdAt
-                          ? new Date(trx.createdAt).toLocaleString("id-ID")
-                          : "-"}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-foreground">
-                        {trx.userId}
-                      </div>
-                      {trx.zoneId && (
-                        <div className="text-[11px] text-primary font-semibold">
-                          Zone: {trx.zoneId}
-                        </div>
-                      )}
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-foreground">
-                        {trx.game?.title || "Game ID " + trx.gameId} -{" "}
-                        {trx.nominal?.label || "Item " + trx.nominalId}
-                      </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        Harga: Rp{" "}
-                        {Number(trx.amount || 0).toLocaleString("id-ID")}
-                      </div>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border",
-                          isPending
-                            ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                            : "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "w-1.5 h-1.5 rounded-full",
-                            isPending ? "bg-amber-500" : "bg-emerald-500",
-                          )}
-                        ></span>
-                        {isPending ? "UNPAID" : "PAID"} (
-                        {safePaymentMethod.toUpperCase()})
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4">
-                      <span
-                        className={cn(
-                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border",
-                          isPending
-                            ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
-                            : isSuccess
-                              ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
-                              : "bg-destructive/10 text-destructive border-destructive/20",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "w-1.5 h-1.5 rounded-full",
-                            isPending
-                              ? "bg-amber-500"
-                              : isSuccess
-                                ? "bg-emerald-500"
-                                : "bg-destructive",
-                          )}
-                        ></span>
-                        {/* PERBAIKAN: Gunakan safeStatus */}
-                        {safeStatus.toUpperCase()}
-                      </span>
-                    </td>
-
-                    <td className="px-6 py-4 text-right flex justify-end gap-2">
-                      {isPending && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 text-[10px] border-primary text-primary hover:bg-primary/10 px-2"
-                        >
-                          Proses
-                        </Button>
-                      )}
-                      {isFailed && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 text-[10px] text-muted-foreground px-2"
-                        >
-                          Refund
-                        </Button>
-                      )}
-                      <button className="text-muted-foreground hover:text-foreground transition ml-2">
-                        <MoreVertical size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
+              transactions.map((trx) => (
+                <TransactionRow key={trx.id} trx={trx} />
+              ))
             )}
           </tbody>
         </table>
       </div>
 
-      <div className="p-4 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-        <span>Menampilkan {transactions.length} transaksi terbaru</span>
-        <div className="flex gap-1">
-          <Button variant="outline" size="sm" className="h-8 px-3">
-            Sebelumnya
+      {/* Footer / Pagination */}
+      <div className="p-4 border-t border-border flex items-center justify-between">
+        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+          Total: {transactions.length} Records
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-lg text-[11px] font-bold"
+          >
+            Prev
           </Button>
           <Button
-            variant="default"
+            variant="secondary"
             size="sm"
-            className="h-8 px-3 bg-primary/20 text-primary hover:bg-primary/30 border-primary/30"
+            className="h-8 w-8 rounded-lg text-xs font-bold bg-primary/10 text-primary"
           >
             1
           </Button>
-          <Button variant="outline" size="sm" className="h-8 px-3">
-            Selanjutnya
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 rounded-lg text-[11px] font-bold"
+          >
+            Next
           </Button>
         </div>
       </div>
     </div>
+  );
+}
+
+// --- Sub-Components ---
+
+function TransactionRow({ trx }: { trx: TransactionWithRelations }) {
+  const status = (trx.status as keyof typeof STATUS_CONFIG) || "pending";
+  const config = STATUS_CONFIG[status];
+
+  const formattedDate = trx.createdAt
+    ? new Intl.DateTimeFormat("id-ID", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(new Date(trx.createdAt))
+    : "-";
+
+  return (
+    <tr className="hover:bg-muted/20 transition-all group">
+      {/* ID & Time */}
+      <td className="px-6 py-5">
+        <div className="font-bold text-foreground tracking-tight">
+          #{trx.id.toString().padStart(5, "0")}
+        </div>
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mt-1 font-medium">
+          <Calendar size={10} />
+          {formattedDate}
+        </div>
+      </td>
+
+      {/* Account Info */}
+      <td className="px-6 py-5">
+        <div className="font-bold text-foreground">{trx.userId}</div>
+        {trx.zoneId && (
+          <Badge
+            variant="secondary"
+            className="mt-1 h-5 text-[9px] font-black tracking-wider uppercase bg-primary/5 text-primary border-none"
+          >
+            Zone: {trx.zoneId}
+          </Badge>
+        )}
+      </td>
+
+      {/* Product & Price */}
+      <td className="px-6 py-5">
+        <div className="font-bold text-foreground flex items-center gap-2">
+          {trx.game?.title || "Unknown Game"}
+          <ChevronRight size={12} className="text-muted-foreground" />
+          <span className="text-primary font-black">
+            {trx.nominal?.label || "Unknown Item"}
+          </span>
+        </div>
+        <div className="text-[10px] text-muted-foreground mt-1 font-bold">
+          TOTAL: Rp {Number(trx.amount).toLocaleString("id-ID")}
+        </div>
+      </td>
+
+      {/* Payment Method */}
+      <td className="px-6 py-5">
+        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-tight text-foreground">
+          <CreditCard size={14} className="text-muted-foreground" />
+          {trx.paymentMethod || "QRIS"}
+        </div>
+      </td>
+
+      {/* Status Badge */}
+      <td className="px-6 py-5">
+        <Badge
+          className={cn(
+            "rounded-md px-2 py-0.5 text-[10px] font-black uppercase tracking-widest border shadow-none",
+            config.color,
+          )}
+        >
+          {config.label}
+        </Badge>
+      </td>
+
+      {/* Actions */}
+      <td className="px-6 py-5 text-right">
+        <div className="flex justify-end gap-2 items-center">
+          {status === "pending" && (
+            <Button
+              size="sm"
+              className="h-7 text-[9px] font-black px-3 rounded-lg uppercase"
+            >
+              Proses
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 rounded-lg text-muted-foreground group-hover:text-foreground"
+          >
+            <MoreVertical size={16} />
+          </Button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function EmptyState() {
+  return (
+    <tr>
+      <td colSpan={6} className="px-6 py-20 text-center">
+        <div className="flex flex-col items-center gap-2">
+          <div className="p-4 bg-muted/50 rounded-full mb-2">
+            <Search size={32} className="text-muted-foreground opacity-20" />
+          </div>
+          <p className="text-sm font-bold text-muted-foreground">
+            Belum ada transaksi
+          </p>
+          <p className="text-xs text-muted-foreground/60 max-w-50">
+            Seluruh pesanan pelanggan akan muncul di daftar ini.
+          </p>
+        </div>
+      </td>
+    </tr>
   );
 }

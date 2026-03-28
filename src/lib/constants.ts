@@ -2,7 +2,6 @@
 
 /**
  * Konfigurasi Dasar Website
- * Digunakan untuk SEO dan informasi umum di seluruh aplikasi
  */
 export const SITE_CONFIG = {
   name: "DraylStore",
@@ -16,35 +15,35 @@ export const SITE_CONFIG = {
 
 /**
  * Metode Pembayaran
- * Data ini bisa tetap di sini jika Anda belum memindahkannya ke database.
- * Logo menggunakan URL placeholder yang konsisten dengan tema gaming.
+ * REVISI: Menggunakan path lokal untuk menghindari error dangerouslyAllowSVG
+ * Pastikan file ini ada di folder: public/images/payments/
  */
 export const PAYMENT_METHODS = [
   {
     id: "dana",
     name: "DANA",
-    logo: "https://placehold.co/200x60/ffffff/007aff?text=DANA",
+    // Gunakan file .png atau .jpg lokal
+    logo: "/pembayaran/dana.svg",
   },
   {
     id: "ovo",
     name: "OVO",
-    logo: "https://placehold.co/200x60/ffffff/4b0082?text=OVO",
+    logo: "/pembayaran/ovo.svg",
   },
   {
     id: "shopeepay",
     name: "ShopeePay",
-    logo: "https://placehold.co/200x60/ffffff/ee4d2d?text=ShopeePay",
+    logo: "/pembayaran/shopeepay.png",
   },
   {
     id: "qris",
     name: "QRIS All Payment",
-    logo: "https://placehold.co/200x60/ffffff/000000?text=QRIS",
+    logo: "/pembayaran/qris.svg",
   },
 ];
 
 /**
  * Kategori Game
- * Digunakan untuk filter di halaman utama atau dashboard admin
  */
 export const GAME_CATEGORIES = [
   { label: "Semua Game", value: "all" },
@@ -53,9 +52,4 @@ export const GAME_CATEGORIES = [
   { label: "Voucher", value: "voucher" },
 ];
 
-/**
- * Tipe Data (TypeScript Interfaces)
- * Menghapus interface yang sudah di-handle oleh Drizzle InferSelectModel.
- * Menyisakan tipe khusus untuk UI state jika diperlukan.
- */
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];

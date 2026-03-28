@@ -1,6 +1,6 @@
 // src/app/page.tsx
-import Image from "next/image";
 import { Suspense } from "react";
+import Image from "next/image";
 import { Navbar } from "@/components/layout/navbar";
 import { Footer } from "@/components/layout/footer";
 import { Hero } from "@/components/home/hero";
@@ -10,18 +10,21 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/db";
 import { games } from "@/db/database/schema";
 import { eq, desc } from "drizzle-orm";
+import { Metadata } from "next";
 
-// 1. Metadata API: Standar SEO 2026
-export const metadata = {
-  title: "DraylStore | Top Up Game Murah & Cepat",
-  description: "Layanan top up game terpercaya dengan sistem otomatis 24 jam.",
+/**
+ * Metadata SEO Standar 2026
+ */
+export const metadata: Metadata = {
+  title: "DraylStore | Top Up Game Murah, Cepat & Otomatis",
+  description:
+    "Platform top up game terpercaya dengan sistem otomatis 24 jam. Support MLBB, PC Games, dan Voucher.",
 };
 
 export default async function Home() {
   /**
-   * 2. Ambil data game utama (Featured) untuk OrderForm.
-   * Kita mengambil 'mobile-legends' sebagai default landing page.
-   * Gunakan relational query agar nominal harganya ikut terbawa.
+   * Mengambil data game unggulan (Mobile Legends) untuk default OrderForm.
+   * Menggunakan relational query Drizzle untuk efisiensi.
    */
   const featuredGame = await db.query.games.findFirst({
     where: eq(games.slug, "mobile-legends"),
@@ -31,41 +34,41 @@ export default async function Home() {
   });
 
   return (
-    <div className="bg-background text-foreground font-sans antialiased min-h-screen flex flex-col selection:bg-primary/30 selection:text-primary">
+    <div className="min-h-screen flex flex-col bg-background text-foreground antialiased selection:bg-primary/20">
       <Navbar />
 
       <main className="flex-1">
         <Hero />
 
-        {/* Popular Games Section */}
-        <section className="max-w-7xl mx-auto px-4 py-10 sm:py-16">
-          <div className="flex items-center gap-3 sm:gap-4 mb-8 sm:mb-10 border-b border-border pb-4 sm:pb-6">
-            <Image
-              src="https://img.icons8.com/fluency/96/fire-element.png"
-              alt="Hot"
-              width={40}
-              height={40}
-              className="w-8 h-8 sm:w-10 sm:h-10"
-              priority
-            />
-            <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tighter">
+        {/* Section: Katalog Game Populer */}
+        <section className="max-w-7xl mx-auto px-4 py-12">
+          <header className="flex items-center gap-3 mb-10 border-b border-border pb-6">
+            <div className="relative w-8 h-8 sm:w-10 sm:h-10">
+              <Image
+                src="https://img.icons8.com/fluency/96/fire-element.png"
+                alt="Trending"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight uppercase">
               Game Terpopuler
             </h2>
-          </div>
+          </header>
 
-          {/* Streaming UI dengan Skeleton */}
           <Suspense fallback={<GameGridSkeleton />}>
             <GameList />
           </Suspense>
         </section>
 
-        {/* 3. Kirim data nominal dan slug ke OrderForm.
-          Sekarang form ini dinamis, harga yang muncul adalah harga asli dari DB.
-        */}
-        <OrderForm
-          nominals={featuredGame?.nominals || []}
-          gameSlug={featuredGame?.slug || "mobile-legends"}
-        />
+        {/* Section: Form Order Utama */}
+        <section className="bg-muted/30 py-16">
+          <OrderForm
+            nominals={featuredGame?.nominals || []}
+            gameSlug={featuredGame?.slug || "mobile-legends"}
+          />
+        </section>
       </main>
 
       <Footer />
@@ -74,7 +77,8 @@ export default async function Home() {
 }
 
 /**
- * Server Component untuk Fetching Katalog
+ * GameList - Server Component
+ * Mengambil data katalog game secara asinkron.
  */
 async function GameList() {
   const popularGames = await db
@@ -86,20 +90,21 @@ async function GameList() {
 
   if (popularGames.length === 0) {
     return (
-      <div className="py-20 text-center border-2 border-dashed border-border rounded-3xl">
+      <div className="py-20 text-center border-2 border-dashed border-border rounded-2xl bg-card/50">
         <p className="text-muted-foreground font-medium">
-          Belum ada game di kategori populer.
+          Katalog game belum tersedia.
         </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
       {popularGames.map((game) => (
         <GameCard
           key={game.id}
           {...game}
+          // Tandai sebagai active jika sesuai dengan featuredGame
           active={game.slug === "mobile-legends"}
         />
       ))}
@@ -107,13 +112,16 @@ async function GameList() {
   );
 }
 
+/**
+ * GameGridSkeleton - UI Loading State
+ */
 function GameGridSkeleton() {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 sm:gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
       {[...Array(6)].map((_, i) => (
-        <div key={i} className="space-y-4">
+        <div key={i} className="space-y-3">
           <Skeleton className="aspect-3/4 w-full rounded-2xl" />
-          <Skeleton className="h-4 w-3/4 mx-auto" />
+          <Skeleton className="h-4 w-2/3 mx-auto rounded-md" />
         </div>
       ))}
     </div>

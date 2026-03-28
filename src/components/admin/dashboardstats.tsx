@@ -1,4 +1,5 @@
-// src/components/admin/dashboardstats.tsx
+"use client";
+
 import {
   Bell,
   DollarSign,
@@ -6,12 +7,14 @@ import {
   Activity,
   RefreshCw,
   TrendingUp,
+  LucideIcon,
 } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { ModeToggle } from "@/components/mode-toggle";
 import { Button } from "../ui/button";
+import { cn } from "@/lib/utils";
 
-// 1. Definisikan tipe data yang akan diterima oleh komponen ini
+// --- Interfaces ---
 export interface DashboardStatsProps {
   apiBalance?: number;
   grossRevenue?: number;
@@ -23,7 +26,41 @@ export interface DashboardStatsProps {
   totalProducts?: number;
 }
 
-// 2. Tangkap props di parameter fungsi dan berikan nilai default (fallback)
+interface StatCardProps {
+  title: string;
+  value: string | number;
+  icon: LucideIcon;
+  iconClassName: string;
+  children?: React.ReactNode;
+}
+
+// --- Sub-component untuk Kartu Statistik ---
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  iconClassName,
+  children,
+}: StatCardProps) {
+  return (
+    <div className="bg-card text-card-foreground p-5 rounded-xl border border-border shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+        <div
+          className={cn(
+            "w-8 h-8 rounded-lg flex items-center justify-center",
+            iconClassName,
+          )}
+        >
+          <Icon size={16} />
+        </div>
+      </div>
+      <p className="text-2xl font-black text-foreground">{value}</p>
+      {children}
+    </div>
+  );
+}
+
 export function DashboardStats({
   apiBalance = 0,
   grossRevenue = 0,
@@ -34,6 +71,8 @@ export function DashboardStats({
   failedCount = 0,
   totalProducts = 0,
 }: DashboardStatsProps) {
+  const formatCurrency = (val: number) => `Rp ${val.toLocaleString("id-ID")}`;
+
   return (
     <>
       {/* Top Header */}
@@ -46,20 +85,18 @@ export function DashboardStats({
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Saldo API Dinamis */}
           <div className="hidden sm:flex items-center gap-3 bg-muted/50 border border-border px-4 py-1.5 rounded-full">
             <div className="flex items-center gap-1.5 border-r border-border pr-3">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span className="text-xs font-semibold text-muted-foreground">
                 Digiflazz API
               </span>
             </div>
             <span className="text-sm font-black text-primary">
-              Rp {apiBalance.toLocaleString("id-ID")}
+              {formatCurrency(apiBalance)}
             </span>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-2">
             <ModeToggle />
             <Button
@@ -73,85 +110,57 @@ export function DashboardStats({
         </div>
       </header>
 
-      {/* 4 Stat Cards */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 p-6 pb-0">
-        {/* Card 1: Pendapatan Kotor */}
-        <div className="bg-card text-card-foreground p-5 rounded-xl border border-border shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Pendapatan Kotor
-            </h3>
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-              <DollarSign size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-foreground">
-            Rp {grossRevenue.toLocaleString("id-ID")}
-          </p>
+        <StatCard
+          title="Pendapatan Kotor"
+          value={formatCurrency(grossRevenue)}
+          icon={DollarSign}
+          iconClassName="bg-emerald-500/10 text-emerald-500"
+        >
           <p className="text-xs text-emerald-500 font-medium mt-2 flex items-center gap-1">
             <TrendingUp size={12} /> Dari transaksi sukses
           </p>
-        </div>
+        </StatCard>
 
-        {/* Card 2: Laba Bersih */}
-        <div className="bg-card text-card-foreground p-5 rounded-xl border border-border shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Estimasi Laba Bersih
-            </h3>
-            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <Wallet size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-foreground">
-            Rp {netProfit.toLocaleString("id-ID")}
-          </p>
+        <StatCard
+          title="Estimasi Laba Bersih"
+          value={formatCurrency(netProfit)}
+          icon={Wallet}
+          iconClassName="bg-primary/10 text-primary"
+        >
           <p className="text-xs text-primary font-medium mt-2 flex items-center gap-1">
             <TrendingUp size={12} /> Margin rata-rata 15%
           </p>
-        </div>
+        </StatCard>
 
-        {/* Card 3: Total Transaksi */}
-        <div className="bg-card text-card-foreground p-5 rounded-xl border border-border shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Total Transaksi
-            </h3>
-            <div className="w-8 h-8 rounded-lg bg-indigo-500/10 text-indigo-500 flex items-center justify-center">
-              <Activity size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-foreground">
-            {totalTransactions.toLocaleString("id-ID")}
-          </p>
+        <StatCard
+          title="Total Transaksi"
+          value={totalTransactions.toLocaleString("id-ID")}
+          icon={Activity}
+          iconClassName="bg-indigo-500/10 text-indigo-500"
+        >
           <p className="text-xs text-muted-foreground font-medium mt-2">
             {successCount} Sukses, {pendingCount} Pending,{" "}
             <span className="text-destructive font-bold">
               {failedCount} Gagal
             </span>
           </p>
-        </div>
+        </StatCard>
 
-        {/* Card 4: Produk */}
-        <div className="bg-card text-card-foreground p-5 rounded-xl border border-border shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
-              Produk Tersinkron
-            </h3>
-            <div className="w-8 h-8 rounded-lg bg-orange-500/10 text-orange-500 flex items-center justify-center">
-              <RefreshCw size={16} />
-            </div>
-          </div>
-          <p className="text-2xl font-black text-foreground">
-            {totalProducts.toLocaleString("id-ID")}
-          </p>
-          <p className="text-xs text-muted-foreground font-medium mt-2 flex items-center justify-between">
+        <StatCard
+          title="Produk Tersinkron"
+          value={totalProducts.toLocaleString("id-ID")}
+          icon={RefreshCw}
+          iconClassName="bg-orange-500/10 text-orange-500"
+        >
+          <div className="text-xs text-muted-foreground font-medium mt-2 flex items-center justify-between">
             <span>Database internal</span>
             <button className="text-primary hover:underline font-semibold">
               Sync Now
             </button>
-          </p>
-        </div>
+          </div>
+        </StatCard>
       </div>
     </>
   );

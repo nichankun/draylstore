@@ -11,67 +11,75 @@ import {
 import { relations } from "drizzle-orm";
 
 /**
- * Tabel Games
- * Dasar katalog game. Kolom 'price' di sini bersifat opsional (bisa untuk harga dasar).
+ * 1. Tabel Games
+ * Menggunakan slug sebagai identitas unik untuk URL SEO-friendly.
  */
 export const games = pgTable("games", {
   id: serial("id").primaryKey(),
-  title: text("title").notNull(),
+  title: varchar("title", { length: 255 }).notNull(),
   slug: varchar("slug", { length: 255 }).notNull().unique(),
-  category: text("category").notNull(),
+  category: varchar("category", { length: 100 }).notNull(), // e.g., 'mobile', 'pc'
   image: text("image").notNull(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 /**
- * Tabel Nominals (Pilihan Produk)
- * Menampung variasi produk per game (contoh: 172 Diamonds, 706 Diamonds).
+ * 2. Tabel Nominals
+ * Menghubungkan paket produk dengan game terkait.
  */
 export const nominals = pgTable("nominals", {
   id: serial("id").primaryKey(),
-  gameId: integer("game_id").references(() => games.id, {
-    onDelete: "cascade",
-  }),
-  label: text("label").notNull(), // Contoh: "172 Diamonds"
-  price: decimal("price", { precision: 10, scale: 2 }).notNull(), // Harga paket
+  gameId: integer("game_id")
+    .references(() => games.id, { onDelete: "cascade" })
+    .notNull(),
+  label: varchar("label", { length: 255 }).notNull(), // e.g., "86 Diamonds"
+  price: decimal("price", { precision: 12, scale: 2 }).notNull(),
 });
 
 /**
- * Tabel Transactions
- * Mencatat data top-up, termasuk user_id game dan metode pembayaran.
+ * 3. Tabel Transactions
+ * Mencatat riwayat pembelian secara mendetail.
  */
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
   gameId: integer("game_id").references(() => games.id, {
-    onDelete: "cascade",
+    onDelete: "set null",
   }),
-  nominalId: integer("nominal_id").references(() => nominals.id), // Referensi paket yang dibeli
-  userId: text("user_id").notNull(),
-  zoneId: text("zone_id"),
-  customerName: text("customer_name").notNull(),
-  status: text("status").default("pending"),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  paymentMethod: text("payment_method").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+  nominalId: integer("nominal_id").references(() => nominals.id, {
+    onDelete: "set null",
+  }),
+
+  // Data Akun Game
+  userId: varchar("user_id", { length: 100 }).notNull(),
+  zoneId: varchar("zone_id", { length: 100 }),
+
+  // Data Transaksi
+  customerName: varchar("customer_name", { length: 255 }).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method", { length: 50 }).notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(), // pending, success, failed
+
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 /**
- * Tabel Users (Pengelola Sistem / Admin)
- * Menyimpan data admin yang memiliki akses login ke dashboard.
+ * 4. Tabel Users (Admin)
  */
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 255 }).notNull().unique(),
   password: text("password").notNull(),
-  role: text("role").default("admin"), // "superadmin" atau "admin"
-  createdAt: timestamp("created_at").defaultNow(),
+  role: varchar("role", { length: 20 }).default("admin").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
 /**
- * Relasi (Drizzle Relations API)
- * Memungkinkan pemanggilan nested data.
+ * --- RELATIONS (Drizzle API) ---
+ * Digunakan untuk query nested yang efisien di Server Components.
  */
+
 export const gamesRelations = relations(games, ({ many }) => ({
   nominals: many(nominals),
   transactions: many(transactions),
