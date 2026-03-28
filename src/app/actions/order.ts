@@ -6,35 +6,43 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 export async function createOrder(formData: FormData) {
-  // 1. Ekstraksi data dari form
-  const userId = formData.get("userId") as string;
-  const zoneId = formData.get("zoneId") as string;
-  const nominalId = formData.get("nominalId") as string; // Digunakan untuk log/validasi
-  const paymentMethod = formData.get("paymentMethod") as string;
-  const amount = formData.get("amount") as string;
+  // 1. Ekstraksi data
+  const userId = formData.get("userId")?.toString();
+  const zoneId = formData.get("zoneId")?.toString();
+  const nominalId = formData.get("nominalId")?.toString();
+  const paymentMethod = formData.get("paymentMethod")?.toString();
+  const amountString = formData.get("amount")?.toString();
 
-  // 2. Simulasi Validasi (Penting untuk standar 2026)
-  if (!userId || !amount || !nominalId) {
+  // 2. Validasi Kelengkapan Data
+  if (!userId || !amountString || !nominalId || !paymentMethod) {
     throw new Error("Data pesanan tidak lengkap");
   }
 
-  // 3. Simpan ke Database
-  await db.insert(transactions).values({
-    userId,
-    zoneId,
-    customerName: "Guest",
-    gameId: 1,
-    amount: amount,
-    paymentMethod: paymentMethod, // Sekarang variabel digunakan
-    status: "pending",
-  });
+  // 3. Validasi Logika Angka (Pastikan bukan huruf dan lebih dari 0)
+  const numericAmount = Number(amountString);
+  if (isNaN(numericAmount) || numericAmount <= 0) {
+    throw new Error("Nominal amount tidak valid");
+  }
 
-  // 4. Update Cache & Redirect
-  // nominalId bisa digunakan untuk metadata redirect jika diperlukan
-  console.log(`Memproses pesanan untuk paket ID: ${nominalId}`);
+  // 4. Proses Database
+  try {
+    await db.insert(transactions).values({
+      userId,
+      zoneId: zoneId || "",
+      customerName: "Guest",
+      gameId: 1,
+      amount: amountString, // <-- PERBAIKAN: Kirim kembali sebagai string sesuai permintaan skema
+      paymentMethod,
+      status: "pending",
+    });
 
+    console.log(`Memproses pesanan untuk paket ID: ${nominalId}`);
+  } catch (error) {
+    console.error("Gagal insert ke database:", error);
+    throw new Error("Gagal memproses pesanan, silakan coba lagi.");
+  }
+
+  // 5. Update Cache & Redirect (Di luar try-catch)
   revalidatePath("/admin");
-
-  // Menggunakan redirect setelah proses berhasil
   redirect(`/status?user=${userId}&method=${paymentMethod}`);
 }

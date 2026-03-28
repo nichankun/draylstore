@@ -25,7 +25,7 @@ import {
 const MAIN_MENU = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
   { title: "Semua Transaksi", url: "/admin/transactions", icon: ClipboardList },
-  { title: "Katalog Produk", url: "/admin/catalog", icon: Package },
+  { title: "Katalog Produk", url: "/admin/games", icon: Package },
 ];
 
 const SYSTEM_MENU = [
