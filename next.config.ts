@@ -6,15 +6,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "https",
-        hostname: "img.icons8.com",
-      },
-      {
-        protocol: "https",
-        hostname: "images.unsplash.com",
-      },
-      {
-        protocol: "https",
-        hostname: "placehold.co",
+        hostname: "**", // Tanda bintang dua ini artinya "IZINKAN SEMUA WEBSITE HTTPS"
       },
     ],
   },

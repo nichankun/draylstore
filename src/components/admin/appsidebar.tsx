@@ -8,6 +8,7 @@ import {
   Package,
   Settings,
   Users,
+  LogOut, // Import icon LogOut
 } from "lucide-react";
 import {
   Sidebar,
@@ -21,6 +22,8 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { logout } from "@/app/actions/auth"; // Import action logout
 
 const MAIN_MENU = [
   { title: "Dashboard", url: "/admin", icon: LayoutDashboard },
@@ -84,12 +87,13 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t p-4 space-y-4">
+        {/* Profil User */}
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 shrink-0 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-bold shadow-sm">
             IH
           </div>
-          <div className="overflow-hidden">
+          <div className="overflow-hidden flex-1">
             <p className="text-sm font-bold text-foreground leading-none mb-1 truncate">
               Imam Hayatul
             </p>
@@ -98,6 +102,17 @@ export function AppSidebar() {
             </p>
           </div>
         </div>
+
+        {/* Tombol Logout */}
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors h-9 px-3"
+          onClick={() => logout()} // Panggil fungsi logout
+        >
+          <LogOut size={18} />
+          <span className="font-semibold text-xs">Keluar Sesi</span>
+        </Button>
       </SidebarFooter>
     </Sidebar>
   );

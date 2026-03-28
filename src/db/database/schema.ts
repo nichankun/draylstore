@@ -56,8 +56,21 @@ export const transactions = pgTable("transactions", {
 });
 
 /**
+ * Tabel Users (Pengelola Sistem / Admin)
+ * Menyimpan data admin yang memiliki akses login ke dashboard.
+ */
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  password: text("password").notNull(),
+  role: text("role").default("admin"), // "superadmin" atau "admin"
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+/**
  * Relasi (Drizzle Relations API)
- * Memungkinkan pemanggilan nested data seperti: db.query.games.findMany({ with: { nominals: true } })
+ * Memungkinkan pemanggilan nested data.
  */
 export const gamesRelations = relations(games, ({ many }) => ({
   nominals: many(nominals),
